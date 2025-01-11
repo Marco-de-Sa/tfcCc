@@ -33,8 +33,7 @@ function mine_or_turn()
         turtle.dig()
         turtle.forward()
         turtle.turnRight()
-	end
-	if (sx >= x and posy%2 == 0) or (ex <= x and posy%2 == 1) then
+	elseif (sx >= x and posy%2 == 0) or (ex <= x and posy%2 == 1) then
         turtle.turnLeft()
         turtle.dig()
         turtle.forward()
