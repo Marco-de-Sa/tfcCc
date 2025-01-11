@@ -47,11 +47,13 @@ end
 ---@param targetDirection directions
 function move.turnTo(targetDirection)
     local targetDirValue = move.directions[targetDirection]
+    print("Turning to " .. targetDirection)
     if ((move.currentDirection -1)%4) == targetDirValue then
         move.turnLeft()
         return
     end
     while move.currentDirection ~= move.targetDirValue do
+        print(move.currentDirection ~= move.targetDirValue)
         move.turnRight()
     end
 end

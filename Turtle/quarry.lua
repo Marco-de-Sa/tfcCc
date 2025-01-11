@@ -36,7 +36,7 @@ end
 function mine_two_layers()
     local x,y,z = gps.locate(2)
     ---@param a number @x 1 cord
-    ---@param b function @x 2 cord
+    ---@param b number @x 2 cord
     ---@param zcond number @moveover variable
     ---@param condition function @condition to break loop
     local function m(a,b,zcond,condition)
