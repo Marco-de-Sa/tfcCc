@@ -1,5 +1,5 @@
 ---@module 'move'
-local move = require("move.lua")
+local move = require("move")
 
 local sx,sy,sz = gps.locate(2)
 local ex,ey,ez = sx+10,sy-10,sz+10
