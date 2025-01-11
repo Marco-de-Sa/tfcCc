@@ -62,5 +62,5 @@ function mine_two_layers()
     end
 end
 
-move.setOrientation("east")
+move.setOrientation(move.directions.east)
 mine_two_layers()

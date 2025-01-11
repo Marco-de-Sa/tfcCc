@@ -104,7 +104,7 @@ function move.calibrateOrientation()
     -- Attempt calibration and move up if necessary
     while true do
         if attemptCalibration() then
-            print("Calibration complete! Facing " .. move.directions[move.currentDirection + 1])
+            print("Calibration complete! Facing " .. move.directions[move.currentDirection])
             move.to(x, y, z) -- Move back to original position
             return
         else
@@ -121,7 +121,7 @@ end
 ---@return nil
 function move.setOrientation(targetDirection)
     move.currentDirection = move.directions[targetDirection]
-    print("Calibration complete! Facing " .. move.directions[move.currentDirection + 1])
+    print("Calibration complete! Facing " .. move.directions[move.currentDirection])
 end
 
 ---Moves the turtle to the target coordinates
@@ -153,6 +153,7 @@ function move.to(targetX, targetY, targetZ)
             turtle.up()
         end
     elseif deltaY < 0 then
+        deltaY = deltaY * -1
         for i = 1, math.abs(deltaY) do
             turtle.down()
         end
@@ -165,6 +166,7 @@ function move.to(targetX, targetY, targetZ)
             turtle.forward()
         end
     elseif deltaX < 0 then
+        deltaX = deltaX * -1
         for i = 1, math.abs(deltaX) do
             move.turnTo("west")
             turtle.forward()
@@ -178,6 +180,7 @@ function move.to(targetX, targetY, targetZ)
             turtle.forward()
         end
     elseif deltaZ < 0 then
+        deltaZ = deltaZ * -1
         for i = 1, math.abs(deltaZ) do
             move.turnTo("north")
             turtle.forward()
@@ -224,6 +227,7 @@ function move.mineto(targetX, targetY, targetZ, checkinv)
             checkinv()
         end
     elseif deltaX < 0 then
+        deltaX = deltaX * -1
         for i = 1, math.abs(deltaX) do
             move.turnTo("west")
             turtle.forward()
@@ -241,6 +245,7 @@ function move.mineto(targetX, targetY, targetZ, checkinv)
             checkinv()
         end
     elseif deltaZ < 0 then
+        deltaZ = deltaZ * -1
         for i = 1, math.abs(deltaZ) do
             move.turnTo("north")
             turtle.forward()
@@ -257,6 +262,7 @@ function move.mineto(targetX, targetY, targetZ, checkinv)
             checkinv()
         end
     elseif deltaY < 0 then
+        deltaY = deltaY * -1
         for i = 1, math.abs(deltaY) do
             turtle.down()
             turtle.digDown()
