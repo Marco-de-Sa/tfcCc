@@ -1,5 +1,5 @@
 ---@module 'move'
-local move = require("move")
+local move = require("move.lua")
 
 local sx,sy,sz = gps.locate(2)
 local ex,ey,ez = sx+10,sy-10,sz+10
@@ -62,4 +62,5 @@ function mine_two_layers()
     end
 end
 
+move.setOrientation("east")
 mine_two_layers()
