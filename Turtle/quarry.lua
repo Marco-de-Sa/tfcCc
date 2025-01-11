@@ -67,6 +67,7 @@ function mine_or_turn()
     print(posz)
     print( posz%2 == 0 and y == ey and x == sx )
     print( posz%2 == 1 and y == sy and x == sx )
+    print(z == ez or z == sz)
     if (z == ez or z == sz) and (( posz%2 == 0 and y == ey and x == sx ) or( posz%2 == 1 and y == sy and x == sx )) then
         new_layer()
         mine_to_x()
@@ -88,5 +89,6 @@ function mine_or_turn()
     end
     mine_to_x()
 end
-
+print(sx.." "..sz.." "..sy)
+print(ex.." "..ez.." "..ey)
 mine_to_x()
