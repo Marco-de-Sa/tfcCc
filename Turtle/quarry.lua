@@ -40,21 +40,19 @@ function mine_two_layers()
     ---@param zcond number @moveover variable
     ---@param condition number @z cord where to break loop
     local function m(a,b,zcond,condition)
+        x,y,z = gps.locate(2)
+        move.mineto(a, y, z,{"z","x"}, check_inv)
         while true do
             x,y,z = gps.locate(2)
-            move.mineto(a, y, z+zcond,{"x","z"}, check_inv)
+            move.mineto(b, y, z+zcond,{"z","x"}, check_inv)
             x,y,z = gps.locate(2)
-            print(z.."/"..condition)
-            print(z==condition)
-            if z == condition then
+            if z == condition and x == b then
                 print("Breaking")
                 break
             end
-            move.mineto(b, y, z+zcond,{"x","z"}, check_inv)
+            move.mineto(a, y, z+zcond,{"z","x"}, check_inv)
             x,y,z = gps.locate(2)
-            print(z.."/"..condition)
-            print(z==condition)
-            if z == condition then
+            if z == condition and x == a then
                 print("Breaking")
                 break
             end
@@ -62,9 +60,9 @@ function mine_two_layers()
     end
     while true do
         m(ex,sx,1,ez-1)
-        move.mineto(x,y-1,ez,{"x","z","y"}, check_inv)
+        move.mineto(ex,y-1,ez,{"x","z","y"}, check_inv)
         m(sx,ex,-1,sz+1)
-        move.mineto(x,y-1,sz,{"x","z","y"}, check_inv)
+        move.mineto(sx,y-1,sz,{"x","z","y"}, check_inv)
         x,y,z = gps.locate(2)
         if y == ey then
             break

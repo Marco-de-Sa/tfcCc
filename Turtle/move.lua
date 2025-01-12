@@ -221,70 +221,79 @@ function move.mineto(targetX, targetY, targetZ, movePattern, checkinv)
     local deltaZ = targetZ - currentZ
     local function moveDX()
         -- Move in X direction
+        print(deltaX)
         if deltaX > 0 then
             for i = 1, math.abs(deltaX) do
                 move.turnTo("east")
-                turtle.forward()
-                if deltaX ~= i then
-                    turtle.dig()
-                    checkinv()
+                if deltaX >= i then
+                    if turtle.dig() then
+                        checkinv()
+                    end
                 end
+                turtle.forward()
             end
         elseif deltaX < 0 then
             deltaX = deltaX * -1
             for i = 1, math.abs(deltaX) do
                 move.turnTo("west")
-                turtle.forward()
-                if deltaX ~= i then
-                    turtle.dig()
-                    checkinv()
+                if deltaX >= i then
+                    if turtle.dig() then
+                        checkinv()
+                    end
                 end
+                turtle.forward()
             end
         end
     end
 
     local function moveDZ()
         -- Move in Z direction
+        print(deltaZ)
         if deltaZ > 0 then
             for i = 1, math.abs(deltaZ) do
                 move.turnTo("south")
-                turtle.forward()
-                if deltaZ ~= i then
-                    turtle.dig()
-                    checkinv()
+                if deltaZ >= i then
+                    if turtle.dig() then
+                        checkinv()
+                    end
                 end
+                turtle.forward()
             end
         elseif deltaZ < 0 then
             deltaZ = deltaZ * -1
             for i = 1, math.abs(deltaZ) do
                 move.turnTo("north")
-                turtle.forward()
-                if deltaZ ~= i then
-                    turtle.dig()
-                    checkinv()
+                if deltaZ >= i then
+                    if turtle.dig() then
+                        checkinv()
+                    end
                 end
+                turtle.forward()
             end
         end
     end
 
     local function moveDY()
         -- Move in Y direction (up/down)
+        print(deltaY)
         if deltaY > 0 then
             for i = 1, math.abs(deltaY) do
-                turtle.up()
-                if deltaY ~= i then
-                    turtle.digUp()
-                    checkinv()
+                if deltaY >= i then
+                    if turtle.digUp() then
+                        checkinv()
+                    end
                 end
+                turtle.up()
             end
         elseif deltaY < 0 then
             deltaY = deltaY * -1
             for i = 1, math.abs(deltaY) do
-                turtle.down()
-                if deltaY ~= i then
-                    turtle.digDown()
-                    checkinv()
+                if deltaY >= i then
+                    if turtle.digDown() then
+                        checkinv()
+                    end
                 end
+                turtle.down()
             end
         end
     end
