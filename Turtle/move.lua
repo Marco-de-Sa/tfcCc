@@ -288,7 +288,7 @@ function move.mineto(targetX, targetY, targetZ, movePattern, checkinv)
             end
         end
     end
-    for move in ipairs(movePattern) do
+    for _,move in ipairs(movePattern) do
         local var = {x=moveDX,z=moveDZ,y=moveDY,X=moveDX,Z=moveDZ,Y=moveDY}
         var[move]()
     end
