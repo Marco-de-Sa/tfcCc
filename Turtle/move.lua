@@ -52,8 +52,7 @@ function move.turnTo(targetDirection)
         move.turnLeft()
         return
     end
-    while move.currentDirection ~= move.targetDirValue do
-        print(move.currentDirection ~= move.targetDirValue)
+    while move.currentDirection ~= targetDirValue do
         move.turnRight()
     end
 end
