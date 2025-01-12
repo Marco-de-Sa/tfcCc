@@ -224,16 +224,20 @@ function move.mineto(targetX, targetY, targetZ, checkinv)
         for i = 1, math.abs(deltaX) do
             move.turnTo("east")
             turtle.forward()
-            turtle.dig()
-            checkinv()
+            if deltaX ~= i then
+                turtle.dig()
+                checkinv()
+            end
         end
     elseif deltaX < 0 then
         deltaX = deltaX * -1
         for i = 1, math.abs(deltaX) do
             move.turnTo("west")
             turtle.forward()
-            turtle.dig()
-            checkinv()
+            if deltaX ~= i then
+                turtle.dig()
+                checkinv()
+            end
         end
     end
 
@@ -242,16 +246,20 @@ function move.mineto(targetX, targetY, targetZ, checkinv)
         for i = 1, math.abs(deltaZ) do
             move.turnTo("south")
             turtle.forward()
-            turtle.dig()
-            checkinv()
+            if deltaZ ~= i then
+                turtle.dig()
+                checkinv()
+            end
         end
     elseif deltaZ < 0 then
         deltaZ = deltaZ * -1
         for i = 1, math.abs(deltaZ) do
             move.turnTo("north")
             turtle.forward()
-            turtle.dig()
-            checkinv()
+            if deltaZ ~= i then
+                turtle.dig()
+                checkinv()
+            end
         end
     end
 
@@ -259,15 +267,19 @@ function move.mineto(targetX, targetY, targetZ, checkinv)
     if deltaY > 0 then
         for i = 1, math.abs(deltaY) do
             turtle.up()
-            turtle.digUp()
-            checkinv()
+            if deltaY ~= i then
+                turtle.digUp()
+                checkinv()
+            end
         end
     elseif deltaY < 0 then
         deltaY = deltaY * -1
         for i = 1, math.abs(deltaY) do
             turtle.down()
-            turtle.digDown()
-            checkinv()
+            if deltaY ~= i then
+                turtle.digDown()
+                checkinv()
+            end
         end
     end
 

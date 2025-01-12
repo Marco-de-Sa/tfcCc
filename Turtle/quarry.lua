@@ -45,7 +45,7 @@ function mine_two_layers()
             x,y,z = gps.locate(2)
             move.mineto(b, y, z+zcond, check_inv)
             x,y,z = gps.locate(2)
-            if b() then
+            if condition() then
                 break
             end
         end
