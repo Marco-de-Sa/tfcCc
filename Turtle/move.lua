@@ -221,7 +221,6 @@ function move.mineto(targetX, targetY, targetZ, movePattern, checkinv)
     local deltaZ = targetZ - currentZ
     local function moveDX()
         -- Move in X direction
-        print(deltaX)
         if deltaX > 0 then
             for i = 1, math.abs(deltaX) do
                 move.turnTo("east")
@@ -248,7 +247,6 @@ function move.mineto(targetX, targetY, targetZ, movePattern, checkinv)
 
     local function moveDZ()
         -- Move in Z direction
-        print(deltaZ)
         if deltaZ > 0 then
             for i = 1, math.abs(deltaZ) do
                 move.turnTo("south")
@@ -275,7 +273,6 @@ function move.mineto(targetX, targetY, targetZ, movePattern, checkinv)
 
     local function moveDY()
         -- Move in Y direction (up/down)
-        print(deltaY)
         if deltaY > 0 then
             for i = 1, math.abs(deltaY) do
                 if deltaY >= i then
