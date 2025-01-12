@@ -41,6 +41,7 @@ function mine_two_layers()
     ---@param condition function @condition to break loop
     local function m(a,b,zcond,condition)
         while true do
+            x,y,z = gps.locate(2)
             move.mineto(a, y, z+zcond, check_inv)
             x,y,z = gps.locate(2)
             move.mineto(b, y, z+zcond, check_inv)
@@ -51,10 +52,10 @@ function mine_two_layers()
         end
     end
     while true do
-        m(ex,sx,1,function () return z == ez end)
-        move.mineto(x,y-1,z)
-        m(sx,ex,-1,function () return z == sz end)
-        move.mineto(x,y-1,z)
+        m(ex,sx,1,function () return z == ez-1 end)
+        move.mineto(x,y-1,z+1)
+        m(sx,ex,-1,function () return z == sz+1 end)
+        move.mineto(x,y-1,z-1)
         x,y,z = gps.locate(2)
         if y == ey then
             break
