@@ -44,8 +44,14 @@ function mine_two_layers()
             x,y,z = gps.locate(2)
             move.mineto(a, y, z+zcond, check_inv)
             x,y,z = gps.locate(2)
+            print(z.."/"..condition.." = "..z==condition)
+            if z == condition then
+                print("Breaking")
+                break
+            end
             move.mineto(b, y, z+zcond, check_inv)
             x,y,z = gps.locate(2)
+            print(z.."/"..condition.." = "..z==condition)
             if z == condition then
                 print("Breaking")
                 break
@@ -54,9 +60,9 @@ function mine_two_layers()
     end
     while true do
         m(ex,sx,1,ez-1)
-        move.mineto(x,y-1,z+1)
+        move.mineto(x,y-1,ez)
         m(sx,ex,-1,sz+1)
-        move.mineto(x,y-1,z-1)
+        move.mineto(x,y-1,sz)
         x,y,z = gps.locate(2)
         if y == ey then
             break
