@@ -196,9 +196,10 @@ end
 ---@param targetX number
 ---@param targetY number
 ---@param targetZ number
+---@param movePattern table
 ---@param checkinv nil | function
 ---@return nil
-function move.mineto(targetX, targetY, targetZ, checkinv)
+function move.mineto(targetX, targetY, targetZ, movePattern, checkinv)
     if not targetX or not targetY or not targetZ then
         error("Target coordinates are invalid (nil value)! Cannot move to target.")
     end
@@ -218,71 +219,84 @@ function move.mineto(targetX, targetY, targetZ, checkinv)
     local deltaX = targetX - currentX
     local deltaY = targetY - currentY
     local deltaZ = targetZ - currentZ
-
-    -- Move in X direction
-    if deltaX > 0 then
-        for i = 1, math.abs(deltaX) do
-            move.turnTo("east")
-            turtle.forward()
-            if deltaX ~= i then
-                turtle.dig()
-                checkinv()
+    local function moveDX()
+        -- Move in X direction
+        if deltaX > 0 then
+            for i = 1, math.abs(deltaX) do
+                move.turnTo("east")
+                turtle.forward()
+                if deltaX ~= i then
+                    turtle.dig()
+                    checkinv()
+                end
             end
-        end
-    elseif deltaX < 0 then
-        deltaX = deltaX * -1
-        for i = 1, math.abs(deltaX) do
-            move.turnTo("west")
-            turtle.forward()
-            if deltaX ~= i then
-                turtle.dig()
-                checkinv()
-            end
-        end
-    end
-
-    -- Move in Z direction
-    if deltaZ > 0 then
-        for i = 1, math.abs(deltaZ) do
-            move.turnTo("south")
-            turtle.forward()
-            if deltaZ ~= i then
-                turtle.dig()
-                checkinv()
-            end
-        end
-    elseif deltaZ < 0 then
-        deltaZ = deltaZ * -1
-        for i = 1, math.abs(deltaZ) do
-            move.turnTo("north")
-            turtle.forward()
-            if deltaZ ~= i then
-                turtle.dig()
-                checkinv()
+        elseif deltaX < 0 then
+            deltaX = deltaX * -1
+            for i = 1, math.abs(deltaX) do
+                move.turnTo("west")
+                turtle.forward()
+                if deltaX ~= i then
+                    turtle.dig()
+                    checkinv()
+                end
             end
         end
     end
 
-    -- Move in Y direction (up/down)
-    if deltaY > 0 then
-        for i = 1, math.abs(deltaY) do
-            turtle.up()
-            if deltaY ~= i then
-                turtle.digUp()
-                checkinv()
+    local function moveDZ()
+        -- Move in Z direction
+        if deltaZ > 0 then
+            for i = 1, math.abs(deltaZ) do
+                move.turnTo("south")
+                turtle.forward()
+                if deltaZ ~= i then
+                    turtle.dig()
+                    checkinv()
+                end
             end
-        end
-    elseif deltaY < 0 then
-        deltaY = deltaY * -1
-        for i = 1, math.abs(deltaY) do
-            turtle.down()
-            if deltaY ~= i then
-                turtle.digDown()
-                checkinv()
+        elseif deltaZ < 0 then
+            deltaZ = deltaZ * -1
+            for i = 1, math.abs(deltaZ) do
+                move.turnTo("north")
+                turtle.forward()
+                if deltaZ ~= i then
+                    turtle.dig()
+                    checkinv()
+                end
             end
         end
     end
 
+    local function moveDY()
+        -- Move in Y direction (up/down)
+        if deltaY > 0 then
+            for i = 1, math.abs(deltaY) do
+                turtle.up()
+                if deltaY ~= i then
+                    turtle.digUp()
+                    checkinv()
+                end
+            end
+        elseif deltaY < 0 then
+            deltaY = deltaY * -1
+            for i = 1, math.abs(deltaY) do
+                turtle.down()
+                if deltaY ~= i then
+                    turtle.digDown()
+                    checkinv()
+                end
+            end
+        end
+    end
+    for move in ipairs(movePattern) do
+        if move == "X" then
+            moveDX()
+        elseif move == "Z" then
+            moveDZ()
+        elseif move == "Y" then
+            moveDY()
+        end
+    end
     print("Reached target position: X=" .. targetX .. ", Y=" .. targetY .. ", Z=" .. targetZ)
 end
 ---@return move
