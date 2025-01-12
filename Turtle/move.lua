@@ -130,8 +130,9 @@ end
 ---@param targetX number
 ---@param targetY number
 ---@param targetZ number
+---@param movePattern table | nil
 ---@return nil
-function move.to(targetX, targetY, targetZ)
+function move.to(targetX, targetY, targetZ, movePattern)
     if not targetX or not targetY or not targetZ then
         error("Target coordinates are invalid (nil value)! Cannot move to target.")
     end
@@ -143,60 +144,75 @@ function move.to(targetX, targetY, targetZ)
         error("Unable to get current GPS position. Ensure the GPS system is set up.")
     end
 
+    if not movePattern then
+        movePattern = {"y","x","z"}
+    end
+
     -- Calculate movement direction to target
     local deltaX = targetX - currentX
     local deltaY = targetY - currentY
     local deltaZ = targetZ - currentZ
 
     -- Move in Y direction (up/down)
-    if deltaY > 0 then
-        for i = 1, math.abs(deltaY) do
-            turtle.up()
-        end
-    elseif deltaY < 0 then
-        deltaY = deltaY * -1
-        for i = 1, math.abs(deltaY) do
-            turtle.down()
+    local function moveDY()
+        if deltaY > 0 then
+            for i = 1, math.abs(deltaY) do
+                turtle.up()
+            end
+        elseif deltaY < 0 then
+            deltaY = deltaY * -1
+            for i = 1, math.abs(deltaY) do
+                turtle.down()
+            end
         end
     end
 
     -- Move in X direction
-    if deltaX > 0 then
-        for i = 1, math.abs(deltaX) do
-            move.turnTo("east")
-            turtle.forward()
-        end
-    elseif deltaX < 0 then
-        deltaX = deltaX * -1
-        for i = 1, math.abs(deltaX) do
-            move.turnTo("west")
-            turtle.forward()
+    local function moveDX()
+        if deltaX > 0 then
+            for i = 1, math.abs(deltaX) do
+                move.turnTo("east")
+                turtle.forward()
+            end
+        elseif deltaX < 0 then
+            deltaX = deltaX * -1
+            for i = 1, math.abs(deltaX) do
+                move.turnTo("west")
+                turtle.forward()
+            end
         end
     end
 
     -- Move in Z direction
-    if deltaZ > 0 then
-        for i = 1, math.abs(deltaZ) do
-            move.turnTo("south")
-            turtle.forward()
+    local function moveDZ()
+        if deltaZ > 0 then
+            for i = 1, math.abs(deltaZ) do
+                move.turnTo("south")
+                turtle.forward()
+            end
+        elseif deltaZ < 0 then
+            deltaZ = deltaZ * -1
+            for i = 1, math.abs(deltaZ) do
+                move.turnTo("north")
+                turtle.forward()
+            end
         end
-    elseif deltaZ < 0 then
-        deltaZ = deltaZ * -1
-        for i = 1, math.abs(deltaZ) do
-            move.turnTo("north")
-            turtle.forward()
-        end
+    end
+
+    for _,move in ipairs(movePattern) do
+        local var = {x=moveDX,z=moveDZ,y=moveDY,X=moveDX,Z=moveDZ,Y=moveDY}
+        var[move]()
     end
 
     print("Reached target position: X=" .. targetX .. ", Y=" .. targetY .. ", Z=" .. targetZ)
 end
 
 ---Move and mine to target coordinates.
----first moves in the X direction, then Z, then X
+---first moves in the X direction, then Z, then Y
 ---@param targetX number
 ---@param targetY number
 ---@param targetZ number
----@param movePattern table
+---@param movePattern table | nil
 ---@param checkinv nil | function
 ---@return nil
 function move.mineto(targetX, targetY, targetZ, movePattern, checkinv)
@@ -213,6 +229,10 @@ function move.mineto(targetX, targetY, targetZ, movePattern, checkinv)
 
     if not checkinv then
         checkinv = function () end
+    end
+
+    if not movePattern then
+        movePattern = {"x","z","y"}
     end
 
     -- Calculate movement direction to target
