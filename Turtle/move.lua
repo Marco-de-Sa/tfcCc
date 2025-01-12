@@ -289,13 +289,8 @@ function move.mineto(targetX, targetY, targetZ, movePattern, checkinv)
         end
     end
     for move in ipairs(movePattern) do
-        if move == "X" then
-            moveDX()
-        elseif move == "Z" then
-            moveDZ()
-        elseif move == "Y" then
-            moveDY()
-        end
+        local var = {x=moveDX,z=moveDZ,y=moveDY,X=moveDX,Z=moveDZ,Y=moveDY}
+        var[move]()
     end
     print("Reached target position: X=" .. targetX .. ", Y=" .. targetY .. ", Z=" .. targetZ)
 end
