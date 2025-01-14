@@ -12,6 +12,7 @@ local jobs = {mine = 0, empty = 1, rtp = 2, layer = 3}
 ---@field endcord table{x,y,z
 ---@field job jobs|nil
 ---@field jobcord nil|table{x,y,z
+---@field jobcycle number|nil
 ---@field job2 jobs|nil
 ---@field rtp nil|table{x,y,z
 ---@field save function()
@@ -52,21 +53,39 @@ function mine_two_layers()
     ---@param b number @x 2 cord
     ---@param zcond number @moveover variable
     ---@param condition number @z cord where to break loop
-    local function m(a,b,zcond,condition)
+    ---@param firstrun boolean @if its the first run
+    local function m(a,b,zcond,condition, firstrun)
         x,y,z = gps.locate(2)
         move.mineto(a, y, z,{"z","x"}, check_inv)
         while true do
+            if firstrun then
+                if progress.jobcycle == 1 then
+                    goto mmine1
+                elseif progress.jobcycle == 2 then
+                    goto mmine2
+                end
+            end
+            progress.jobcycle = 1
+            progress.save()
+            ::mmine1::
             x,y,z = gps.locate(2)
             move.mineto(b, y, z+zcond,{"z","x"}, check_inv)
             x,y,z = gps.locate(2)
             if z == condition and x == b then
                 print("Breaking")
+                progress.jobcycle = nil
+                progress.save()
                 return
             end
+            progress.jobcycle = 2
+            progress.save()
+            ::mmine2::
             move.mineto(a, y, z+zcond,{"z","x"}, check_inv)
             x,y,z = gps.locate(2)
             if z == condition and x == a then
                 print("Breaking")
+                progress.jobcycle = nil
+                progress.save()
                 return
             end
         end
@@ -81,6 +100,8 @@ function mine_two_layers()
                     turtle.select(i)
                     turtle.drop()
                 end
+                progress.job2 = jobs.rtp
+                progress.save()
                 move.to(progress.rtp[1],progress.rtp[2],progress.rtp[3],"x","z","y")
                 progress.job2 = nil
                 progress.rtp = nil
@@ -97,6 +118,7 @@ function mine_two_layers()
                         progress.job = jobs.layer
                         progress.jobcord = {ex,y-1,ez}
                         progress.save()
+                        firstrun = false
                         goto layer1
                     end
                     goto mine1
@@ -105,6 +127,7 @@ function mine_two_layers()
                         progress.job = jobs.layer
                         progress.jobcord = {sx,y-1,sz}
                         progress.save()
+                        firstrun = false
                         goto layer2
                     end
                     goto mine2
@@ -113,8 +136,10 @@ function mine_two_layers()
                 end
             elseif progress.job == jobs.layer then
                 if progress.jobcord[1] == ex and (progress.jobcord[2] == (y - 1) or progress.jobcord[2] == y) and progress.jobcord[3] == ez then
+                    firstrun = false
                     goto layer1
                 elseif progress.jobcord[1] == sx and (progress.jobcord[2] == (y - 1) or progress.jobcord[2] == y) and progress.jobcord[3] == sz then
+                    firstrun = false
                     goto layer2
                 end
             end
@@ -124,7 +149,7 @@ function mine_two_layers()
         progress.jobcord = {sx,y,sz}
         progress.save()
         ::mine1::
-        m(ex,sx,1,ez-1)
+        m(ex,sx,1,ez-1,firstrun)
         progress.job = jobs.layer
         progress.jobcord = {ex,y-1,ez}
         progress.save()
@@ -135,8 +160,11 @@ function mine_two_layers()
             break
         end
         move.mineto(ex,y-1,ez,{"x","z","y"}, check_inv)
+        progress.job = jobs.mine
+        progress.jobcord = {ex,y,ez}
+        progress.save()
         ::mine2::
-        m(sx,ex,-1,sz+1)
+        m(sx,ex,-1,sz+1,firstrun)
         progress.job = jobs.layer
         progress.jobcord = {sx,y-1,sz}
         progress.save()
@@ -150,12 +178,20 @@ function mine_two_layers()
     end
 end
 
+if fs.exists("progress") then
+    local file = fs.open("progress","r")
+    progress = textutils.unserialize(file.readAll())
+    file.close()
+end
+
 if not progress then
     progress = {
         startcord = {sx,sy,sz},
         endcord = {ex,ey,ez},
         job = nil,
         jobcord = nil,
+        jobcycle = 0,
+        job2 = nil,
         rtp = nil,
         save = function()
             local file = fs.open("progress","w")
