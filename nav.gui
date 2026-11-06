@@ -261,6 +261,19 @@ local function loadData(nav)
     if type(slots) ~= "table" then
         slots = {}
     end
+    if type(nav.getMapName) == "function" then
+        for i = 1, #slots do
+            local slot = slots[i]
+            if type(slot) == "table" and (type(slot.name) ~= "string" or slot.name == "") then
+                local slotNumber = tonumber(slot.slot) or i
+                local okName, name = pcall(nav.getMapName, slotNumber)
+                if okName and type(name) == "string" and name ~= "" then
+                    slot.name = name
+                    slot.filled = true
+                end
+            end
+        end
+    end
     local status = {}
     if nav.getStatus then
         local okStatus, value = pcall(nav.getStatus)
