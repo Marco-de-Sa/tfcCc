@@ -41,7 +41,7 @@ end
 local function isNavigationTable(nav)
     return nav
         and type(nav.listSlots) == "function"
-        and type(nav.getStatus) == "function"
+        and type(nav.getSelectedSlot) == "function"
         and type(nav.setSelectedSlot) == "function"
 end
 
@@ -100,8 +100,8 @@ local function getSlots()
     return slots
 end
 
-local function selectedSlot(status, slots)
-    local selected = tonumber(status.selectedSlot)
+local function selectedSlot(selected, slots)
+    selected = tonumber(selected)
     if selected then
         for i, slot in ipairs(slots) do
             if tonumber(slot.slot) == selected then
@@ -134,12 +134,7 @@ end
 local function draw()
     local width, height = monitor.getSize()
     local slots = getSlots()
-    local status = nav.getStatus()
-    if type(status) ~= "table" then
-        error("Navigation table returned an invalid status")
-    end
-
-    local index = selectedSlot(status, slots)
+    local index = selectedSlot(nav.getSelectedSlot(), slots)
     local current = index and slots[index] or nil
 
     regions = {}
@@ -172,8 +167,7 @@ local function changeSlot(direction)
         return
     end
 
-    local status = nav.getStatus()
-    local index = selectedSlot(status, slots) or 1
+    local index = selectedSlot(nav.getSelectedSlot(), slots) or 1
     index = ((index - 1 + direction) % #slots) + 1
     nav.setSelectedSlot(tonumber(slots[index].slot))
 end
