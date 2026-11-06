@@ -1,0 +1,221 @@
+-- Advanced Navigation Table GUI
+-- For Create: Gadgets & Gizmos + CC:Tweaked Advanced Monitor
+--
+-- Features:
+--   * Shows the name of the currently selected map/item
+--   * Previous / Next buttons
+--   * Clickable list of all slots (filled ones highlighted)
+--   * Live updates when selection changes
+--
+-- Setup:
+--   1. Place an Advanced Computer next to (or wired to) the Advanced Navigation Table
+--   2. Place an Advanced Monitor (any size works; larger is better)
+--   3. Connect the monitor with a Wired Modem or place it adjacent
+--   4. Paste this program onto the computer and run it
+
+local mon = peripheral.find("monitor")
+local nav = peripheral.find("navigation_table")
+
+if not mon then
+    print("No monitor found!")
+    return
+end
+if not nav then
+    print("No navigation_table peripheral found!")
+    print("Place the computer next to the Advanced Navigation Table")
+    print("or connect them with a Wired Modem.")
+    return
+end
+
+-- Make sure the monitor is touch-enabled (Advanced Monitor)
+mon.setTextScale(0.5)
+local w, h = mon.getSize()
+
+-- Colors
+local bg      = colors.black
+local fg      = colors.white
+local accent  = colors.cyan
+local selected = colors.lime
+local empty   = colors.gray
+local button  = colors.blue
+local buttonText = colors.white
+
+-- State
+local slots = {}
+local selectedSlot = 1
+local slotCount = 15
+
+-- Refresh data from the peripheral
+local function refresh()
+    pcall(function()
+        slotCount = nav.getSlotCount() or 15
+        selectedSlot = nav.getSelectedSlot() or 1
+        slots = nav.listSlots() or {}
+    end)
+end
+
+-- Draw a centered string
+local function drawCentered(y, text, color)
+    mon.setCursorPos(math.floor((w - #text) / 2) + 1, y)
+    mon.setTextColor(color or fg)
+    mon.write(text)
+end
+
+-- Draw a button
+local function drawButton(x, y, bw, bh, text, bgCol, fgCol)
+    mon.setBackgroundColor(bgCol or button)
+    mon.setTextColor(fgCol or buttonText)
+    for dy = 0, bh - 1 do
+        mon.setCursorPos(x, y + dy)
+        mon.write(string.rep(" ", bw))
+    end
+    local tx = x + math.floor((bw - #text) / 2)
+    local ty = y + math.floor(bh / 2)
+    mon.setCursorPos(tx, ty)
+    mon.write(text)
+    mon.setBackgroundColor(bg)
+end
+
+-- Main draw function
+local function draw()
+    mon.setBackgroundColor(bg)
+    mon.clear()
+    mon.setTextColor(fg)
+
+    -- Title
+    drawCentered(1, "=== Advanced Navigation Table ===", accent)
+    drawCentered(2, "Gadgets & Gizmos", colors.lightGray)
+
+    -- Current selection (big)
+    local currentName = "(empty)"
+    local currentInfo = slots[selectedSlot]
+    if currentInfo and currentInfo.filled then
+        currentName = nav.getMapName(selectedSlot) or "Unnamed Map"
+    end
+
+    mon.setCursorPos(2, 4)
+    mon.setTextColor(accent)
+    mon.write("Selected Slot: ")
+    mon.setTextColor(selected)
+    mon.write(tostring(selectedSlot) .. " / " .. tostring(slotCount))
+
+    mon.setCursorPos(2, 6)
+    mon.setTextColor(accent)
+    mon.write("Current Target:")
+    mon.setCursorPos(2, 7)
+    mon.setTextColor(colors.yellow)
+    mon.write(currentName:sub(1, w - 2))
+
+    -- Prev / Next buttons
+    local btnW = 12
+    local btnH = 3
+    local btnY = 9
+    drawButton(2, btnY, btnW, btnH, "< Prev", colors.orange, colors.white)
+    drawButton(w - btnW - 1, btnY, btnW, btnH, "Next >", colors.orange, colors.white)
+
+    -- Slot list header
+    mon.setCursorPos(2, 13)
+    mon.setTextColor(accent)
+    mon.write("Slots (click to select):")
+
+    -- Draw slot list
+    local startY = 15
+    local maxSlotsVisible = h - startY
+    local cols = 2
+    local colWidth = math.floor(w / cols) - 1
+
+    for i = 1, math.min(slotCount, maxSlotsVisible * cols) do
+        local col = (i - 1) % cols
+        local row = math.floor((i - 1) / cols)
+        local x = 2 + col * (colWidth + 1)
+        local y = startY + row
+
+        if y >= h then break end
+
+        local slot = slots[i]
+        local isSel = (i == selectedSlot)
+        local filled = slot and slot.filled
+
+        mon.setCursorPos(x, y)
+        if isSel then
+            mon.setBackgroundColor(selected)
+            mon.setTextColor(colors.black)
+        elseif filled then
+            mon.setBackgroundColor(colors.gray)
+            mon.setTextColor(colors.white)
+        else
+            mon.setBackgroundColor(colors.black)
+            mon.setTextColor(empty)
+        end
+
+        local label = string.format("%2d: ", i)
+        local name = "(empty)"
+        if filled then
+            name = (slot.name or "Map"):sub(1, colWidth - 5)
+        end
+        mon.write(label .. name)
+        mon.setBackgroundColor(bg)
+    end
+
+    -- Footer
+    mon.setCursorPos(1, h)
+    mon.setTextColor(colors.lightGray)
+    mon.setBackgroundColor(colors.black)
+    mon.write(" Click slots or use buttons  |  Refreshing...")
+end
+
+-- Handle touch events
+local function handleTouch(x, y)
+    -- Prev button
+    if y >= 9 and y <= 11 and x >= 2 and x <= 13 then
+        pcall(nav.previousSlot)
+        return true
+    end
+    -- Next button
+    if y >= 9 and y <= 11 and x >= w - 13 and x <= w - 2 then
+        pcall(nav.nextSlot)
+        return true
+    end
+
+    -- Slot clicks
+    local startY = 15
+    local cols = 2
+    local colWidth = math.floor(w / cols) - 1
+    local row = y - startY + 1
+    if row >= 1 then
+        local col = 1
+        if x > colWidth + 2 then col = 2 end
+        local index = (row - 1) * cols + col
+        if index >= 1 and index <= slotCount then
+            pcall(function() nav.setSelectedSlot(index) end)
+            return true
+        end
+    end
+    return false
+end
+
+-- Main loop
+print("Navigation Table GUI running...")
+print("Monitor size: " .. w .. "x" .. h)
+print("Press Ctrl+T to stop")
+
+refresh()
+draw()
+
+while true do
+    local event, side, x, y = os.pullEvent()
+    if event == "monitor_touch" then
+        if handleTouch(x, y) then
+            sleep(0.1)
+            refresh()
+            draw()
+        end
+    elseif event == "timer" then
+        -- Periodic refresh
+        refresh()
+        draw()
+    end
+
+    -- Schedule next refresh
+    os.startTimer(1)
+end
