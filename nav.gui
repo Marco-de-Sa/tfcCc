@@ -1,726 +1,204 @@
--- navgui.lua
--- Touch GUI for the Gadgets & Gizmos Advanced Navigation Table.
--- Draws on an Advanced Monitor. The computer only hosts the program.
---
--- Setup
---   Attach an Advanced Monitor and an Advanced Navigation Table to this
---   computer (directly, or through a wired modem). Put filled maps in the table.
---
--- Run
---   navgui
---   navgui <monitor> [navigation_table]
---   navgui <navigation_table> [monitor]
---
--- Touch a map to select it. GO / HOLD / STOP run the table.
--- PREV / NEXT cycle slots. < and > change page when the list is long.
--- Ctrl+T on the computer stops the program.
+-- Touch GUI for the Create: Gadgets & Gizmos Advanced Navigation Table.
+-- Connect an Advanced Monitor and the table to this computer, then run main.
 
-local args = {...}
+local args = { ... }
 
-local function argType(name)
-    if type(name) ~= "string" or name == "" then
-        return nil
-    end
-    if not peripheral.isPresent(name) then
-        return nil
-    end
-    return peripheral.getType(name)
-end
-
-local wantedMonitor
-local wantedNav
-local t1 = argType(args[1])
-local t2 = argType(args[2])
-if t1 == "navigation_table" or t2 == "monitor" then
-    wantedNav = (t1 == "navigation_table") and args[1] or args[2]
-    wantedMonitor = (t1 == "monitor") and args[1] or ((t2 == "monitor") and args[2] or nil)
-else
-    wantedMonitor = args[1]
-    wantedNav = args[2]
-end
-
-local function isColourMonitor(mon)
-    if mon.isColour then
-        local ok, value = pcall(mon.isColour)
-        if ok and value then
-            return true
+local function findPeripheral(wantedName, wantedType, isSuitable)
+    if wantedName then
+        if not peripheral.isPresent(wantedName) then
+            error("Peripheral not found: " .. wantedName)
         end
-    end
-    if mon.isColor then
-        local ok, value = pcall(mon.isColor)
-        if ok and value then
-            return true
+        if peripheral.getType(wantedName) ~= wantedType then
+            error(wantedName .. " is not a " .. wantedType .. " peripheral")
         end
+        local wrapped = peripheral.wrap(wantedName)
+        if not isSuitable(wrapped) then
+            error(wantedName .. " does not support the required methods")
+        end
+        return wrapped, wantedName
     end
-    return false
-end
 
-local function findMonitor(wanted)
-    if wanted and not peripheral.isPresent(wanted) then
-        return nil, nil
-    end
-    local best, bestName, bestArea
     for _, name in ipairs(peripheral.getNames()) do
-        if peripheral.getType(name) == "monitor" and (not wanted or name == wanted) then
-            local mon = peripheral.wrap(name)
-            if mon and isColourMonitor(mon) then
-                local w, h = mon.getSize()
-                local area = (w or 0) * (h or 0)
-                if not best or wanted or area > bestArea then
-                    best, bestName, bestArea = mon, name, area
-                end
+        if peripheral.getType(name) == wantedType then
+            local wrapped = peripheral.wrap(name)
+            if isSuitable(wrapped) then
+                return wrapped, name
             end
         end
     end
-    return best, bestName
+    return nil, nil
 end
 
-local function isAdvanced(nav)
-    return nav and nav.listSlots and nav.setSelectedSlot and nav.start
+local function isAdvancedMonitor(monitor)
+    return monitor
+        and type(monitor.getSize) == "function"
+        and type(monitor.isColor) == "function"
+        and monitor.isColor()
+        and type(monitor.setCursorPos) == "function"
+        and type(monitor.write) == "function"
 end
 
-local function findNav(wanted)
-    if wanted then
-        if peripheral.getType(wanted) ~= "navigation_table" then
-            return nil
-        end
-        return peripheral.wrap(wanted)
-    end
-    local basic
-    for _, name in ipairs(peripheral.getNames()) do
-        if peripheral.getType(name) == "navigation_table" then
-            local nav = peripheral.wrap(name)
-            if isAdvanced(nav) then
-                return nav
-            end
-            if not basic then
-                basic = nav
-            end
-        end
-    end
-    return basic
+local function isNavigationTable(nav)
+    return nav
+        and type(nav.listSlots) == "function"
+        and type(nav.getStatus) == "function"
+        and type(nav.setSelectedSlot) == "function"
 end
 
-local function clip(text, width)
-    text = tostring(text or "")
-    if width < 1 then
-        return ""
-    end
-    if #text <= width then
-        return text
-    end
-    if width == 1 then
-        return text:sub(1, 1)
-    end
-    return text:sub(1, width - 1) .. "."
+local monitor, monitorName = findPeripheral(args[1], "monitor", isAdvancedMonitor)
+if not monitor then
+    error("No Advanced Monitor found. Connect one or pass its peripheral name.")
 end
 
-local function fmtDist(dist)
-    dist = tonumber(dist)
-    if not dist or dist < 0 then
-        return "----"
-    end
-    if dist >= 10000 then
-        return string.format("%.1fkm", dist / 1000)
-    end
-    if dist >= 1000 then
-        return string.format("%.2fkm", dist / 1000)
-    end
-    return string.format("%.0fm", dist)
-end
-
-local function fmtAngle(angle)
-    angle = tonumber(angle)
-    if not angle then
-        return "---"
-    end
-    return string.format("%+.0f", angle)
-end
-
-local function fmtPos(pos)
-    if type(pos) ~= "table" or pos.x == nil then
-        return "no fix"
-    end
-    return string.format("%d %d %d",
-        math.floor(pos.x + 0.5),
-        math.floor(pos.y + 0.5),
-        math.floor(pos.z + 0.5))
-end
-
-local function stateColour(state)
-    state = tostring(state or "idle")
-    if state == "running" then
-        return colours.lime, colours.black
-    end
-    if state == "paused" then
-        return colours.yellow, colours.black
-    end
-    return colours.red, colours.white
+local nav = findPeripheral(args[2], "navigation_table", isNavigationTable)
+if not nav then
+    error("No Advanced Navigation Table found. Connect one or pass its peripheral name.")
 end
 
 local regions = {}
 
-local function addRegion(x, y, w, h, id, data)
+local function centerText(y, text, foreground, background)
+    local width = monitor.getSize()
+    text = tostring(text or "")
+    if #text > width then
+        text = text:sub(1, math.max(1, width - 1)) .. ">"
+    end
+    monitor.setCursorPos(math.max(1, math.floor((width - #text) / 2) + 1), y)
+    monitor.setTextColor(foreground)
+    monitor.setBackgroundColor(background)
+    monitor.write(text)
+end
+
+local function drawButton(x, y, width, label, action)
+    local screenWidth = monitor.getSize()
+    width = math.min(width, screenWidth - x + 1)
+    if width < 1 then
+        return
+    end
+    monitor.setCursorPos(x, y)
+    monitor.setBackgroundColor(colors.blue)
+    monitor.setTextColor(colors.white)
+    monitor.write(label .. string.rep(" ", math.max(0, width - #label)))
     regions[#regions + 1] = {
-        x1 = x, y1 = y, x2 = x + w - 1, y2 = y + h - 1, id = id, data = data,
+        left = x,
+        right = x + width - 1,
+        row = y,
+        action = action,
     }
 end
 
-local function hitTest(x, y)
-    for i = #regions, 1, -1 do
-        local r = regions[i]
-        if x >= r.x1 and x <= r.x2 and y >= r.y1 and y <= r.y2 then
-            return r
-        end
-    end
-end
-
-local function fill(mon, x, y, w, h, bg)
-    if w < 1 or h < 1 then
-        return
-    end
-    mon.setBackgroundColour(bg)
-    local blank = string.rep(" ", w)
-    for row = 0, h - 1 do
-        mon.setCursorPos(x, y + row)
-        mon.write(blank)
-    end
-end
-
-local function writeAt(mon, x, y, w, text, fg, bg, align)
-    if w < 1 then
-        return
-    end
-    text = clip(text, w)
-    local gap = w - #text
-    local left = 0
-    if align == "center" then
-        left = math.floor(gap / 2)
-    elseif align == "right" then
-        left = gap
-    end
-    mon.setCursorPos(x, y)
-    mon.setTextColour(fg)
-    mon.setBackgroundColour(bg)
-    mon.write(string.rep(" ", left) .. text .. string.rep(" ", gap - left))
-end
-
-local function button(mon, x, y, w, h, text, fg, bg, id, data)
-    if w < 1 or h < 1 then
-        return
-    end
-    fill(mon, x, y, w, h, bg)
-    local labelY = y + math.floor((h - 1) / 2)
-    writeAt(mon, x, labelY, w, text, fg, bg, "center")
-    addRegion(x, y, w, h, id, data)
-end
-
-local function placeRow(mon, y, height, width, items)
-    local n = #items
-    if n == 0 or width < n or height < 1 then
-        return
-    end
-    local gap = 1
-    if n + (n - 1) * gap > width then
-        gap = 0
-    end
-    local usable = width - gap * (n - 1)
-    local base = math.floor(usable / n)
-    if base < 1 then
-        return
-    end
-    local extra = usable - base * n
-    local x = 1
-    for i = 1, n do
-        local bw = base
-        if i <= extra then
-            bw = bw + 1
-        end
-        local item = items[i]
-        button(mon, x, y, bw, height, item[1], item[3], item[4], item[2], item[5])
-        x = x + bw + gap
-    end
-end
-
-local function chooseScale(mon)
-    pcall(mon.setTextScale, 0.5)
-    local w, h = mon.getSize()
-    if w and h and w >= 90 and h >= 40 then
-        pcall(mon.setTextScale, 1)
-    end
-end
-
-local function loadData(nav)
-    if not isAdvanced(nav) then
-        return nil, "Not an Advanced Navigation Table.\nThe basic table has no map slots."
-    end
-    local okSlots, slots = pcall(nav.listSlots)
-    if not okSlots then
-        return nil, tostring(slots)
-    end
+local function getSlots()
+    local slots = nav.listSlots()
     if type(slots) ~= "table" then
-        slots = {}
+        error("Navigation table returned an invalid slot list")
+    end
+    for i, slot in ipairs(slots) do
+        if type(slot) ~= "table" or tonumber(slot.slot) == nil then
+            error("Navigation table returned an invalid slot at position " .. i)
+        end
+    end
+    return slots
+end
+
+local function selectedSlot(status, slots)
+    local selected = tonumber(status.selectedSlot)
+    if selected then
+        for i, slot in ipairs(slots) do
+            if tonumber(slot.slot) == selected then
+                return i
+            end
+        end
+    end
+    return #slots > 0 and 1 or nil
+end
+
+local function displayName(slot)
+    if not slot then
+        return "No slots available"
+    end
+    if slot.filled == false then
+        return "Empty slot"
+    end
+    if type(slot.name) == "string" and slot.name ~= "" then
+        return slot.name
     end
     if type(nav.getMapName) == "function" then
-        for i = 1, #slots do
-            local slot = slots[i]
-            if type(slot) == "table" and (type(slot.name) ~= "string" or slot.name == "") then
-                local slotNumber = tonumber(slot.slot) or i
-                local okName, name = pcall(nav.getMapName, slotNumber)
-                if okName and type(name) == "string" and name ~= "" then
-                    slot.name = name
-                    slot.filled = true
-                end
-            end
+        local name = nav.getMapName(tonumber(slot.slot))
+        if type(name) == "string" and name ~= "" then
+            return name
         end
     end
-    local status = {}
-    if nav.getStatus then
-        local okStatus, value = pcall(nav.getStatus)
-        if okStatus and type(value) == "table" then
-            status = value
-        end
-    end
-    return slots, status
+    return "Unnamed item"
 end
 
-local function fingerprint(slots, status, page)
-    local parts = {
-        tostring(status.state),
-        tostring(status.selectedSlot),
-        tostring(status.name),
-        fmtAngle(status.currentAngle),
-        tostring(page),
-    }
-    local target = status.target
-    if type(target) == "table" then
-        parts[#parts + 1] = tostring(target.label)
-        parts[#parts + 1] = fmtDist(target.distance)
-        parts[#parts + 1] = fmtPos(target.position)
+local function draw()
+    local width, height = monitor.getSize()
+    local slots = getSlots()
+    local status = nav.getStatus()
+    if type(status) ~= "table" then
+        error("Navigation table returned an invalid status")
     end
-    for i = 1, #slots do
-        local slot = slots[i]
-        parts[#parts + 1] = tostring(slot.slot)
-        parts[#parts + 1] = slot.filled and "1" or "0"
-        parts[#parts + 1] = tostring(slot.name or "")
-        local t = slot.target
-        if type(t) == "table" then
-            parts[#parts + 1] = tostring(t.label or "")
-            parts[#parts + 1] = fmtDist(t.distance)
-            parts[#parts + 1] = t.hasTarget and "1" or "0"
-        end
-    end
-    return table.concat(parts, "|")
-end
 
-local function drawError(mon, message)
+    local index = selectedSlot(status, slots)
+    local current = index and slots[index] or nil
+
     regions = {}
-    local w, h = mon.getSize()
-    mon.setBackgroundColour(colours.black)
-    mon.setTextColour(colours.red)
-    mon.clear()
-    writeAt(mon, 1, 1, w, " NAVIGATION ", colours.black, colours.orange, "left")
-    local y = 3
-    for line in tostring(message):gmatch("[^\n]+") do
-        if y > h then
-            break
-        end
-        writeAt(mon, 2, y, w - 2, line, colours.red, colours.black, "left")
-        y = y + 1
-    end
-    if y + 1 <= h then
-        writeAt(mon, 2, y + 1, w - 2, "Check the wired network, then wait.", colours.lightGrey, colours.black, "left")
-    end
-end
+    monitor.setBackgroundColor(colors.black)
+    monitor.setTextColor(colors.white)
+    monitor.clear()
 
-local function item(text, id, fg, bg, data)
-    return { text, id, fg, bg, data }
-end
+    centerText(1, "NAVIGATION TABLE", colors.cyan, colors.black)
+    centerText(3, "Selected item", colors.lightGray, colors.black)
+    centerText(4, displayName(current), colors.white, colors.black)
 
-local function draw(mon, slots, status, page)
-    regions = {}
-    local w, h = mon.getSize()
-    mon.setBackgroundColour(colours.black)
-    mon.clear()
-
-    local tall = w >= 29 and h >= 20
-    local showPos = h >= 12
-    local headerH = 2
-    if showPos then
-        headerH = headerH + 1
-    end
-    if tall then
-        headerH = headerH + 1
-    end
-    local footerH = tall and 3 or 2
-
-    local name = status.name
-    if type(name) ~= "string" or name == "" then
-        name = "NAV TABLE"
-    end
-    local state = tostring(status.state or "idle")
-    local stateFg, stateBg = stateColour(state)
-    local stateLabel = " " .. state:upper() .. " "
-    if #stateLabel > w then
-        stateLabel = stateLabel:sub(1, w)
-    end
-
-    writeAt(mon, 1, 1, w, " " .. name, colours.black, colours.orange, "left")
-    writeAt(mon, w - #stateLabel + 1, 1, #stateLabel, stateLabel, stateFg, stateBg, "left")
-
-    local target = type(status.target) == "table" and status.target or {}
-    local selected = tonumber(status.selectedSlot) or 0
-
-    -- Find the selected slot's item name (hover name of the map)
-    local itemName = "empty"
-    for i = 1, #slots do
-        local s = slots[i]
-        if s and (s.slot == selected or s.selected) then
-            if s.filled and s.name and s.name ~= "" then
-                itemName = s.name
-            end
-            break
-        end
-    end
-
-    local label = target.label
-    if type(label) ~= "string" or label == "" then
-        label = target.hasTarget and "target" or "no target"
-    end
-    local distText = fmtDist(target.distance)
-    local angText = fmtAngle(status.currentAngle)
-    if w >= 32 then
-        local nameW = math.max(4, w - 26)
-        writeAt(mon, 1, 2, w,
-            string.format(" S%02d %s  %s  ang %s", selected, clip(itemName, nameW), distText, angText),
-            colours.white, colours.black, "left")
+    if current then
+        centerText(6, "Slot " .. tostring(current.slot) .. " of " .. #slots,
+            colors.yellow, colors.black)
     else
-        writeAt(mon, 1, 2, w,
-            string.format("S%02d %s %s", selected, clip(itemName, math.max(1, w - 16)), distText),
-            colours.white, colours.black, "left")
+        centerText(6, "No slots detected", colors.yellow, colors.black)
     end
 
-    local line = 3
-    if showPos then
-        local posText = fmtPos(target.position)
-        local info = " Tgt " .. posText
-        if w < 32 then
-            info = clip(label, math.max(1, w - #posText - 1)) .. " " .. posText
-        end
-        writeAt(mon, 1, line, w, info, colours.lightGrey, colours.black, "left")
-        line = line + 1
+    if height >= 8 then
+        local buttonY = height - 1
+        local buttonWidth = math.floor(width / 2)
+        drawButton(1, buttonY, buttonWidth, "< PREV", "previous")
+        drawButton(buttonWidth + 1, buttonY, width - buttonWidth, "NEXT >", "next")
     end
-    if tall then
-        writeAt(mon, 1, line, w, string.rep("-", w), colours.grey, colours.black, "left")
-    end
-
-    local gridTop = headerH + 1
-    local gridBottom = h - footerH
-    local gridH = gridBottom - gridTop + 1
-    if gridH < 2 or w < 12 then
-        writeAt(mon, 1, math.min(h, gridTop), w, "Monitor too small.", colours.red, colours.black, "left")
-        return page, 1
-    end
-
-    local cellH = (gridH >= 18) and 3 or 2
-    local minCellW = 14
-    local cols = math.max(1, math.floor(w / minCellW))
-    local rows = math.max(1, math.floor(gridH / cellH))
-    local perPage = cols * rows
-    local count = #slots
-    local pages = math.max(1, math.ceil(count / perPage))
-    if page < 1 then
-        page = 1
-    end
-    if page > pages then
-        page = pages
-    end
-
-    fill(mon, 1, gridTop, w, gridH, colours.black)
-
-    local baseW = math.floor(w / cols)
-    local extraW = w - baseW * cols
-    local first = (page - 1) * perPage + 1
-    for i = 1, perPage do
-        local index = first + i - 1
-        local slot = slots[index]
-        if not slot then
-            break
-        end
-        local col = (i - 1) % cols
-        local row = math.floor((i - 1) / cols)
-        local x = 1
-        local cellW = baseW
-        for c = 0, col - 1 do
-            x = x + baseW
-            if c < extraW then
-                x = x + 1
-            end
-        end
-        if col < extraW then
-            cellW = baseW + 1
-        end
-        local y = gridTop + row * cellH
-
-        local filled = slot.filled and true or false
-        local isSelected = slot.selected or slot.slot == selected
-        local bg = colours.grey
-        local fg = colours.white
-        local sub = colours.lightGrey
-        if isSelected then
-            bg = colours.green
-            fg = colours.black
-            sub = colours.black
-        elseif not filled then
-            bg = colours.black
-            fg = colours.grey
-            sub = colours.grey
-        end
-
-        local slotTarget = type(slot.target) == "table" and slot.target or {}
-        local mapName = filled and (slot.name or "map") or "empty"
-        local detail = ""
-        if filled then
-            if slotTarget.label ~= nil and slotTarget.label ~= "" then
-                detail = slotTarget.label
-            else
-                detail = "no banner"
-            end
-            if slotTarget.hasTarget then
-                detail = fmtDist(slotTarget.distance) .. " " .. detail
-            end
-        end
-
-        fill(mon, x, y, cellW, cellH, bg)
-        local mark = isSelected and ">" or " "
-        writeAt(mon, x, y, cellW, string.format("%s%02d %s", mark, slot.slot or index, mapName), fg, bg, "left")
-        if cellH >= 2 then
-            local second = detail
-            if second == "" and isSelected then
-                second = "selected"
-            end
-            writeAt(mon, x, y + 1, cellW, " " .. second, sub, bg, "left")
-        end
-        if cellH >= 3 then
-            local third = isSelected and " selected" or ""
-            writeAt(mon, x, y + 2, cellW, third, sub, bg, "left")
-        end
-        addRegion(x, y, cellW, cellH, "slot", slot.slot or index)
-    end
-
-    local controls
-    if tall then
-        controls = {
-            item("START", "start", colours.black, colours.lime),
-            item("PAUSE", "pause", colours.black, colours.yellow),
-            item("STOP", "stop", colours.white, colours.red),
-            item("PREV", "prev", colours.black, colours.lightBlue),
-            item("NEXT", "next", colours.black, colours.cyan),
-        }
-        local footerY = h - footerH + 1
-        writeAt(mon, 1, footerY, w, string.rep("-", w), colours.grey, colours.black, "left")
-        if pages > 1 then
-            local pageText = string.format(" %d/%d ", page, pages)
-            local leftW = 3
-            local rightW = 3
-            button(mon, 1, footerY, leftW, 1, "<", colours.white, colours.purple, "page", -1)
-            button(mon, w - rightW + 1, footerY, rightW, 1, ">", colours.white, colours.purple, "page", 1)
-            local midX = leftW + 1
-            local midW = w - leftW - rightW
-            if midW >= #pageText then
-                writeAt(mon, midX, footerY, midW, pageText, colours.white, colours.black, "center")
-            end
-        end
-        placeRow(mon, footerY + 1, 2, w, controls)
-    else
-        local y1 = h - 1
-        local y2 = h
-        local run = {
-            item("GO", "start", colours.black, colours.lime),
-            item("HOLD", "pause", colours.black, colours.yellow),
-            item("STOP", "stop", colours.white, colours.red),
-        }
-        if w >= 36 then
-            run = {
-                item("START", "start", colours.black, colours.lime),
-                item("PAUSE", "pause", colours.black, colours.yellow),
-                item("STOP", "stop", colours.white, colours.red),
-            }
-        end
-        placeRow(mon, y1, 1, w, run)
-        if pages > 1 then
-            local leftW = 3
-            local rightW = 3
-            if w < 16 then
-                leftW = 2
-                rightW = 2
-            end
-            button(mon, 1, y2, leftW, 1, "<", colours.white, colours.purple, "page", -1)
-            button(mon, w - rightW + 1, y2, rightW, 1, ">", colours.white, colours.purple, "page", 1)
-            local midX = leftW + 1
-            local midW = w - leftW - rightW
-            local half = math.floor(midW / 2)
-            local rest = midW - half
-            if half >= 1 then
-                button(mon, midX, y2, half, 1, "PREV", colours.black, colours.lightBlue, "prev")
-            end
-            if rest >= 1 then
-                button(mon, midX + half, y2, rest, 1, "NEXT", colours.black, colours.cyan, "next")
-            end
-        else
-            placeRow(mon, y2, 1, w, {
-                item("PREV", "prev", colours.black, colours.lightBlue),
-                item("NEXT", "next", colours.black, colours.cyan),
-            })
-        end
-    end
-
-    return page, pages
 end
 
-local function apply(nav, id, data, page, pages)
-    local method
-    if id == "slot" then
-        method = "setSelectedSlot"
-    elseif id == "start" then
-        method = "start"
-    elseif id == "pause" then
-        method = "pause"
-    elseif id == "stop" then
-        method = "stop"
-    elseif id == "prev" then
-        method = "previousSlot"
-    elseif id == "next" then
-        method = "nextSlot"
-    elseif id == "page" then
-        page = page + (data or 0)
-        if page < 1 then
-            page = 1
-        end
-        if page > pages then
-            page = pages
-        end
-    end
-    if not method then
-        return page
-    end
-    if type(nav[method]) ~= "function" then
-        return page, method .. " is not supported by this navigation table."
-    end
-    local ok, err
-    if id == "slot" then
-        ok, err = pcall(nav[method], data)
-    else
-        ok, err = pcall(nav[method])
-    end
-    if not ok then
-        return page, tostring(err)
-    end
-    return page
-end
-
-local function main()
-    local mon, monName = findMonitor(wantedMonitor)
-    if not mon then
-        print("No advanced monitor found.")
-        print("Place a colour Advanced Monitor on this computer or a wired modem.")
-        if wantedMonitor then
-            print("Nothing colour-capable named '" .. tostring(wantedMonitor) .. "'.")
-        end
-        print("Usage: navgui [monitor] [navigation_table]")
+local function changeSlot(direction)
+    local slots = getSlots()
+    if #slots == 0 then
         return
     end
 
-    chooseScale(mon)
-    print("Nav GUI on " .. monName)
-    print("Touch a map to select it. Ctrl+T to stop.")
-
-    local nav = findNav(wantedNav)
-    local page = 1
-    local pages = 1
-    local lastFp = ""
-    local timerId = os.startTimer(0.4)
-
-    local function refresh(force)
-        if not peripheral.isPresent(monName) then
-            return false
-        end
-        nav = nav or findNav(wantedNav)
-        if not nav then
-            if force or lastFp ~= "missing" then
-                lastFp = "missing"
-                drawError(mon, "No navigation_table on the network.")
-            end
-            return true
-        end
-        local slots, statusOrErr = loadData(nav)
-        if not slots then
-            local fp = "err:" .. tostring(statusOrErr)
-            if force or fp ~= lastFp then
-                lastFp = fp
-                drawError(mon, statusOrErr)
-            end
-            nav = nil
-            return true
-        end
-        local fp = fingerprint(slots, statusOrErr, page)
-        if force or fp ~= lastFp then
-            page, pages = draw(mon, slots, statusOrErr, page)
-            lastFp = fingerprint(slots, statusOrErr, page)
-        end
-        return true
-    end
-
-    if not refresh(true) then
-        print("Monitor removed.")
-        return
-    end
-
-    while true do
-        local event, a, b, c = os.pullEvent()
-        if event == "timer" and a == timerId then
-            timerId = os.startTimer(0.4)
-            if not refresh(false) then
-                print("Monitor removed.")
-                return
-            end
-        elseif event == "monitor_touch" and a == monName then
-            local hit = hitTest(b, c)
-            if hit and nav then
-                local actionError
-                page, actionError = apply(nav, hit.id, hit.data, page, pages)
-                if actionError then
-                    printError("Navigation table action failed: " .. actionError)
-                end
-                if not refresh(true) then
-                    print("Monitor removed.")
-                    return
-                end
-            end
-        elseif event == "monitor_resize" and a == monName then
-            if not refresh(true) then
-                print("Monitor removed.")
-                return
-            end
-        elseif event == "peripheral" or event == "peripheral_detach" then
-            if a == monName then
-                print("Monitor removed.")
-                return
-            end
-            if wantedNav and a == wantedNav then
-                nav = nil
-            elseif not wantedNav then
-                nav = nil
-            end
-            if not refresh(true) then
-                print("Monitor removed.")
-                return
-            end
-        end
-    end
+    local status = nav.getStatus()
+    local index = selectedSlot(status, slots) or 1
+    index = ((index - 1 + direction) % #slots) + 1
+    nav.setSelectedSlot(tonumber(slots[index].slot))
 end
 
-local ok, err = pcall(main)
-if not ok and err ~= "Terminated" then
-    printError(err)
+draw()
+local timer = os.startTimer(1)
+
+while true do
+    local event, side, x, y = os.pullEvent()
+    if event == "monitor_touch" and side == monitorName then
+        for _, region in ipairs(regions) do
+            if y == region.row and x >= region.left and x <= region.right then
+                if region.action == "previous" then
+                    changeSlot(-1)
+                elseif region.action == "next" then
+                    changeSlot(1)
+                end
+                draw()
+                break
+            end
+        end
+    elseif event == "timer" and side == timer then
+        draw()
+        timer = os.startTimer(1)
+    elseif event == "monitor_resize" and side == monitorName then
+        draw()
+    end
 end
