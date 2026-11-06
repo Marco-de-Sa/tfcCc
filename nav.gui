@@ -3,27 +3,44 @@
 
 local args = { ... }
 
-local function findPeripheral(wantedName, wantedType, isSuitable)
+local function methodsFor(name)
+    if peripheral.getMethods then
+        return peripheral.getMethods(name)
+    end
+    return {}
+end
+
+local function diagnostic()
+    local devices = {}
+    for _, name in ipairs(peripheral.getNames()) do
+        local kind = peripheral.getType(name)
+        local methods = methodsFor(name)
+        devices[#devices + 1] = name .. " (" .. tostring(kind) .. "): "
+            .. table.concat(methods, ", ")
+    end
+    if #devices == 0 then
+        return "No peripherals are connected."
+    end
+    return table.concat(devices, "\n")
+end
+
+local function findPeripheral(wantedName, isSuitable, label)
     if wantedName then
         if not peripheral.isPresent(wantedName) then
             error("Peripheral not found: " .. wantedName)
         end
-        if peripheral.getType(wantedName) ~= wantedType then
-            error(wantedName .. " is not a " .. wantedType .. " peripheral")
-        end
         local wrapped = peripheral.wrap(wantedName)
         if not isSuitable(wrapped) then
-            error(wantedName .. " does not support the required methods")
+            error(wantedName .. " is not a supported " .. label .. " peripheral.\n"
+                .. diagnostic())
         end
         return wrapped, wantedName
     end
 
     for _, name in ipairs(peripheral.getNames()) do
-        if peripheral.getType(name) == wantedType then
-            local wrapped = peripheral.wrap(name)
-            if isSuitable(wrapped) then
-                return wrapped, name
-            end
+        local wrapped = peripheral.wrap(name)
+        if isSuitable(wrapped, name) then
+            return wrapped, name
         end
     end
     return nil, nil
@@ -38,21 +55,50 @@ local function isAdvancedMonitor(monitor)
         and type(monitor.write) == "function"
 end
 
-local function isNavigationTable(nav)
-    return nav
-        and type(nav.listSlots) == "function"
-        and type(nav.getSelectedSlot) == "function"
-        and type(nav.setSelectedSlot) == "function"
+local function isNavigationTable(nav, name)
+    if not nav then
+        return false
+    end
+    local canList = type(nav.listSlots) == "function"
+        or (type(nav.getSlotCount) == "function" and type(nav.getSlot) == "function")
+    local canSelect = type(nav.setSelectedSlot) == "function"
+        or (type(nav.nextSlot) == "function" and type(nav.previousSlot) == "function")
+    local peripheralType = name and peripheral.getType(name)
+    local hasNavigationType = type(peripheralType) == "string"
+        and peripheralType:lower():find("navigation", 1, true) ~= nil
+    return (canList and canSelect) or hasNavigationType
 end
 
-local monitor, monitorName = findPeripheral(args[1], "monitor", isAdvancedMonitor)
+local requestedMonitor, requestedNav
+for _, name in ipairs(args) do
+    if peripheral.isPresent(name) then
+        local wrapped = peripheral.wrap(name)
+        if isAdvancedMonitor(wrapped) then
+            requestedMonitor = name
+        elseif isNavigationTable(wrapped, name) then
+            requestedNav = name
+        else
+            error("Peripheral " .. name .. " is neither a supported monitor nor a navigation table.\n"
+                .. diagnostic())
+        end
+    end
+end
+
+local monitor, monitorName = findPeripheral(requestedMonitor, isAdvancedMonitor, "Advanced Monitor")
 if not monitor then
-    error("No Advanced Monitor found. Connect one or pass its peripheral name.")
+    error("No Advanced Monitor found. Connect one or pass its peripheral name.\n"
+        .. diagnostic())
 end
 
-local nav = findPeripheral(args[2], "navigation_table", isNavigationTable)
+local nav = findPeripheral(requestedNav, isNavigationTable, "Advanced Navigation Table")
 if not nav then
-    error("No Advanced Navigation Table found. Connect one or pass its peripheral name.")
+    error("No supported Advanced Navigation Table found. This version needs "
+        .. "listSlots() and setSelectedSlot(), or getSlotCount()/getSlot() and "
+        .. "nextSlot()/previousSlot().\n" .. diagnostic())
+end
+if not isNavigationTable(nav) then
+    error("The connected navigation table does not expose a supported slot API.\n"
+        .. diagnostic())
 end
 
 local regions = {}
@@ -88,14 +134,23 @@ local function drawButton(x, y, width, label, action)
 end
 
 local function getSlots()
-    local slots = nav.listSlots()
-    if type(slots) ~= "table" then
-        error("Navigation table returned an invalid slot list")
+    local slots
+    if type(nav.listSlots) == "function" then
+        slots = nav.listSlots()
+        if type(slots) ~= "table" then
+            error("Navigation table returned an invalid slot list")
+        end
+    else
+        slots = {}
+        for i = 1, nav.getSlotCount() do
+            slots[i] = nav.getSlot(i)
+        end
     end
     for i, slot in ipairs(slots) do
-        if type(slot) ~= "table" or tonumber(slot.slot) == nil then
+        if type(slot) ~= "table" then
             error("Navigation table returned an invalid slot at position " .. i)
         end
+        slot.slot = tonumber(slot.slot) or i
     end
     return slots
 end
@@ -134,7 +189,8 @@ end
 local function draw()
     local width, height = monitor.getSize()
     local slots = getSlots()
-    local index = selectedSlot(nav.getSelectedSlot(), slots)
+    local selected = type(nav.getSelectedSlot) == "function" and nav.getSelectedSlot() or nil
+    local index = selectedSlot(selected, slots)
     local current = index and slots[index] or nil
 
     regions = {}
@@ -167,9 +223,18 @@ local function changeSlot(direction)
         return
     end
 
-    local index = selectedSlot(nav.getSelectedSlot(), slots) or 1
+    local index = selectedSlot(
+        type(nav.getSelectedSlot) == "function" and nav.getSelectedSlot() or nil,
+        slots
+    ) or 1
     index = ((index - 1 + direction) % #slots) + 1
-    nav.setSelectedSlot(tonumber(slots[index].slot))
+    if type(nav.setSelectedSlot) == "function" then
+        nav.setSelectedSlot(tonumber(slots[index].slot))
+    elseif direction < 0 then
+        nav.previousSlot()
+    else
+        nav.nextSlot()
+    end
 end
 
 draw()
