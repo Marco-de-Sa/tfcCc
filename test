@@ -3,18 +3,18 @@ local buttonColors = {
     colors.green,
     colors.green,
     colors.green,
+    colors.green,
+    colors.green,
+    colors.green,
+    colors.green,
     colors.red,
-    colors.green,
-    colors.green,
-    colors.green,
-    colors.green,
 }
 
 local buttonNames = {
-    "Button 1",
-    "Button 2",
-    "Button 3",
-    "Button 4",
+    "Factory",
+    "Marco",
+    "Tim",
+    "spawn",
     "Button 5",
     "Button 6",
     "Button 7",
@@ -67,10 +67,20 @@ local function draw()
     term.write(message:sub(1, width))
 end
 
+local buttonActions = {
+    function() Create_RedstoneRequester_5.request() end,
+    function() Create_RedstoneRequester_6.request() end,
+    function() Create_RedstoneRequester_3.request() end,
+    function() Create_RedstoneRequester_4.request() end,
+    function() return end,
+    function() return end,
+    function() return end,
+    function() return end,
+    function() return end,
+}
+
 local function activateButton(index)
-    local ok, err = pcall(function()
-        request()
-    end)
+    local ok, err = pcall(buttonActions[index])
 
     if ok then
         message = ("%s: request() completed."):format(buttonNames[index])
