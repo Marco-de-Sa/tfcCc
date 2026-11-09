@@ -10,6 +10,18 @@ local buttonColors = {
     colors.green,
 }
 
+local buttonNames = {
+    "Button 1",
+    "Button 2",
+    "Button 3",
+    "Button 4",
+    "Button 5",
+    "Button 6",
+    "Button 7",
+    "Button 8",
+    "Button 9",
+}
+
 local message = "Click a button to call request()."
 
 local monitor = peripheral.find("monitor")
@@ -33,7 +45,7 @@ local function draw()
         local top = math.floor(row * buttonHeight / 3) + 1
         local bottom = math.floor((row + 1) * buttonHeight / 3)
         local buttonWidth = right - left + 1
-        local label = ("Button %d"):format(index)
+        local label = buttonNames[index]
         local visibleLabel = label:sub(1, buttonWidth)
         local labelX = left + math.floor((buttonWidth - #visibleLabel) / 2)
         local labelY = math.floor((top + bottom) / 2)
@@ -61,9 +73,9 @@ local function activateButton(index)
     end)
 
     if ok then
-        message = ("Button %d: request() completed."):format(index)
+        message = ("%s: request() completed."):format(buttonNames[index])
     else
-        message = ("Button %d: request() failed: %s"):format(index, tostring(err))
+        message = ("%s: request() failed: %s"):format(buttonNames[index], tostring(err))
     end
     draw()
 end
