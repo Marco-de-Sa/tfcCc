@@ -1,1 +1,89 @@
-https://raw.githubusercontent.com/Marco-de-Sa/tfcCc/refs/heads/master/test
+local buttonColors = {
+    colors.green,
+    colors.green,
+    colors.green,
+    colors.green,
+    colors.red,
+    colors.green,
+    colors.green,
+    colors.green,
+    colors.green,
+}
+
+local message = "Click a button to call request()."
+
+local monitor = peripheral.find("monitor")
+if monitor then
+    term.redirect(monitor)
+end
+
+local function draw()
+    local width, height = term.getSize()
+    local buttonHeight = math.max(1, height - 1)
+
+    term.setBackgroundColor(colors.black)
+    term.setTextColor(colors.white)
+    term.clear()
+
+    for index = 1, 9 do
+        local column = (index - 1) % 3
+        local row = math.floor((index - 1) / 3)
+        local left = math.floor(column * width / 3) + 1
+        local right = math.floor((column + 1) * width / 3)
+        local top = math.floor(row * buttonHeight / 3) + 1
+        local bottom = math.floor((row + 1) * buttonHeight / 3)
+        local buttonWidth = right - left + 1
+        local label = ("Button %d"):format(index)
+        local visibleLabel = label:sub(1, buttonWidth)
+        local labelX = left + math.floor((buttonWidth - #visibleLabel) / 2)
+        local labelY = math.floor((top + bottom) / 2)
+
+        term.setBackgroundColor(buttonColors[index])
+        for y = top, bottom do
+            term.setCursorPos(left, y)
+            term.write(string.rep(" ", buttonWidth))
+        end
+
+        term.setTextColor(colors.white)
+        term.setCursorPos(labelX, labelY)
+        term.write(visibleLabel)
+    end
+
+    term.setBackgroundColor(colors.black)
+    term.setTextColor(colors.white)
+    term.setCursorPos(1, height)
+    term.write(message:sub(1, width))
+end
+
+local function activateButton(index)
+    local ok, err = pcall(function()
+        request()
+    end)
+
+    if ok then
+        message = ("Button %d: request() completed."):format(index)
+    else
+        message = ("Button %d: request() failed: %s"):format(index, tostring(err))
+    end
+    draw()
+end
+
+draw()
+
+while true do
+    local event, _, x, y = os.pullEvent()
+
+    if event == "term_resize" then
+        draw()
+    elseif event == "mouse_click" or event == "monitor_touch" then
+        local width, height = term.getSize()
+        local buttonHeight = math.max(1, height - 1)
+
+        if x >= 1 and x <= width and y >= 1 and y <= buttonHeight then
+            local column = math.min(2, math.floor((x - 1) * 3 / width))
+            local row = math.min(2, math.floor((y - 1) * 3 / buttonHeight))
+            activateButton(row * 3 + column + 1)
+        end
+    end
+
+end
