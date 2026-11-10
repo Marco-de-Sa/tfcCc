@@ -19,10 +19,8 @@ local buttonNames = {
     "Button 6",
     "Button 7",
     "Button 8",
-    "Button 9",
+    "autopilot",
 }
-
-local message = "Click a button to call request()."
 
 local monitor = peripheral.find("monitor")
 if monitor then
@@ -64,29 +62,79 @@ local function draw()
     term.setBackgroundColor(colors.black)
     term.setTextColor(colors.white)
     term.setCursorPos(1, height)
-    term.write(message:sub(1, width))
 end
 
 local buttonActions = {
-    function() Create_RedstoneRequester_5.request() end,
-    function() Create_RedstoneRequester_6.request() end,
-    function() Create_RedstoneRequester_3.request() end,
-    function() Create_RedstoneRequester_4.request() end,
-    function() return end,
-    function() return end,
-    function() return end,
-    function() return end,
-    function() return end,
+    function()
+        local currentOutput = peripheral.call("redstone_relay_14", "getAnalogOutput", "top")
+        local nextOutput = currentOutput == 15 and 0 or 15
+        peripheral.call("redstone_relay_14", "setAnalogOutput", "top", nextOutput)
+        sleep(1)
+        peripheral.call("redstone_relay_14", "setAnalogOutput", "top", currentOutput)
+        peripheral.call("Create_RedstoneRequester_5", "request")
+    end,
+    function()
+        local currentOutput = peripheral.call("redstone_relay_14", "getAnalogOutput", "top")
+        local nextOutput = currentOutput == 15 and 0 or 15
+        peripheral.call("redstone_relay_14", "setAnalogOutput", "top", nextOutput)
+        sleep(1)
+        peripheral.call("redstone_relay_14", "setAnalogOutput", "top", currentOutput)
+        peripheral.call("Create_RedstoneRequester_6", "request")
+    end,
+    function()
+        local currentOutput = peripheral.call("redstone_relay_14", "getAnalogOutput", "top")
+        local nextOutput = currentOutput == 15 and 0 or 15
+        peripheral.call("redstone_relay_14", "setAnalogOutput", "top", nextOutput)
+        sleep(1)
+        peripheral.call("redstone_relay_14", "setAnalogOutput", "top", currentOutput)
+        peripheral.call("Create_RedstoneRequester_3", "request")
+    end,
+    function()
+        local currentOutput = peripheral.call("redstone_relay_14", "getAnalogOutput", "top")
+        local nextOutput = currentOutput == 15 and 0 or 15
+        peripheral.call("redstone_relay_14", "setAnalogOutput", "top", nextOutput)
+        sleep(1)
+        peripheral.call("redstone_relay_14", "setAnalogOutput", "top", currentOutput)
+        peripheral.call("Create_RedstoneRequester_4", "request")
+    end,
+    function() 
+        local currentOutput = peripheral.call("redstone_relay_14", "getAnalogOutput", "top")
+        local nextOutput = currentOutput == 15 and 0 or 15
+        peripheral.call("redstone_relay_14", "setAnalogOutput", "top", nextOutput)
+        sleep(1)
+        peripheral.call("redstone_relay_14", "setAnalogOutput", "top", currentOutput)
+    end,
+    function()
+        local currentOutput = peripheral.call("redstone_relay_14", "getAnalogOutput", "top")
+        local nextOutput = currentOutput == 15 and 0 or 15
+        peripheral.call("redstone_relay_14", "setAnalogOutput", "top", nextOutput)
+        sleep(1)
+        peripheral.call("redstone_relay_14", "setAnalogOutput", "top", currentOutput)
+    end,
+    function() 
+        local currentOutput = peripheral.call("redstone_relay_14", "getAnalogOutput", "top")
+        local nextOutput = currentOutput == 15 and 0 or 15
+        peripheral.call("redstone_relay_14", "setAnalogOutput", "top", nextOutput)
+        sleep(1)
+        peripheral.call("redstone_relay_14", "setAnalogOutput", "top", currentOutput)
+    end,
+    function() 
+        local currentOutput = peripheral.call("redstone_relay_14", "getAnalogOutput", "top")
+        local nextOutput = currentOutput == 15 and 0 or 15
+        peripheral.call("redstone_relay_14", "setAnalogOutput", "top", nextOutput)
+        sleep(1)
+        peripheral.call("redstone_relay_14", "setAnalogOutput", "top", currentOutput)
+    end,
+    function()
+        local currentOutput = peripheral.call("redstone_relay_14", "getAnalogOutput", "top")
+        local nextOutput = currentOutput == 15 and 0 or 15
+        peripheral.call("redstone_relay_14", "setAnalogOutput", "top", nextOutput)
+        buttonColors[9] = buttonColors[9] == colors.red and colors.purple or colors.red
+    end,
 }
 
 local function activateButton(index)
     local ok, err = pcall(buttonActions[index])
-
-    if ok then
-        message = ("%s: request() completed."):format(buttonNames[index])
-    else
-        message = ("%s: request() failed: %s"):format(buttonNames[index], tostring(err))
-    end
     draw()
 end
 
