@@ -138,12 +138,27 @@ local function activateButton(index)
     draw()
 end
 
+local function runCheck()
+    local frontInput = peripheral.call("redstone_relay_16", "getAnalogInput", "front")
+    local backInput = peripheral.call("redstone_relay_16", "getAnalogInput", "back")
+    if frontInput == 15 and backInput == 0 then
+        buttonColors[9] = colors.red
+        peripheral.call("redstone_relay_14", "setAnalogOutput", "top", 0)
+        draw()
+    end
+end
+
+local checkTimer = os.startTimer(1)
+
 draw()
 
 while true do
-    local event, _, x, y = os.pullEvent()
+    local event, eventId, x, y = os.pullEvent()
 
-    if event == "term_resize" then
+    if event == "timer" and eventId == checkTimer then
+        runCheck()
+        checkTimer = os.startTimer(1)
+    elseif event == "term_resize" then
         draw()
     elseif event == "mouse_click" or event == "monitor_touch" then
         local width, height = term.getSize()
@@ -153,6 +168,8 @@ while true do
             local column = math.min(2, math.floor((x - 1) * 3 / width))
             local row = math.min(2, math.floor((y - 1) * 3 / buttonHeight))
             activateButton(row * 3 + column + 1)
+            os.cancelTimer(checkTimer)
+            checkTimer = os.startTimer(1)
         end
     end
 
